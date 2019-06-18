@@ -1,0 +1,11 @@
+version: 2.1
+
+jobs:
+  build:
+    executor: measureperf/default
+    steps:
+      # - measureperf/lighthouse:
+      #     url: https://example.com
+      - measureperf/lighthouse:
+          url: https://example.com
+          post_comment: true

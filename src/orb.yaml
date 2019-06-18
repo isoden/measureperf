@@ -1,0 +1,60 @@
+version: 2.1
+description: Measuring website performance
+
+executors:
+  default:
+    docker:
+      - image: kporras07/lighthouse-ci # https://github.com/GoogleChromeLabs/lighthousebot/blob/master/builder/Dockerfile
+
+commands:
+  #
+  # Performance audit
+  #
+  lighthouse:
+    parameters:
+      url:
+        description: website url
+        type: string
+
+      config_path:
+        description: config file path
+        type: string
+        default: ""
+
+      post_comment:
+        description:
+        type: boolean
+        default: false
+
+    steps:
+      - run:
+          name: Performance audit
+          command: |
+            lighthouse << parameters.url >> \
+              --chrome-flags=--headless \
+              --config-path=<< parameters.config_path >> \
+              --output-path=/home/chrome/reports/report-$CIRCLE_SHA1 \
+              --output=json \
+              --output=html
+
+      - store_artifacts:
+          path: /home/chrome/reports
+          destination: reports
+
+      - when:
+          condition: << parameters.post_comment >>
+          steps:
+            - run:
+                name: Post comment to GitHub
+                command: |
+                  curl "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/issues/$(basename \"$CIRCLE_PULL_REQUEST\")/comments" \
+                    -X "POST" \
+                    -H "Content-Type:application/json" \
+                    -H "Authorization:token $GITHUB_ACCESS_TOKEN" \
+                    -d "{\"body\":\"<a href='$CIRCLE_BUILD_URL/artifacts/0/$HOME/project/reports/report-$CIRCLE_SHA1.html' target='_blank'>artifacts link</a>\"}"
+
+            - run:
+                name: dev:CONFIRM URL
+                command: |
+                  echo ${CIRCLE_BUILD_URL}/artifacts/0/$HOME/project/reports/report-$CIRCLE_SHA1.html
+                  echo $CIRCLE_ARTIFACTS
